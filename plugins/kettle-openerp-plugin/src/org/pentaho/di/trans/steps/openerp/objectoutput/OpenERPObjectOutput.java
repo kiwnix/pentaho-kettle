@@ -17,6 +17,8 @@
 
 package org.pentaho.di.trans.steps.openerp.objectoutput;
 
+import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -125,7 +127,7 @@ public class OpenERPObjectOutput extends BaseStep implements StepInterface {
       }
 
       for ( int i = 0; i < meta.getModelFields().length; i++ ) {
-        updateRow.put( meta.getModelFields()[i], this.getInputValue( inputRow, this.index[i] ) );
+          updateRow.put(meta.getModelFields()[i], this.getInputValue(inputRow, this.index[i]));
       }
       // If the import function does not return the ID field once complete then
       // we have to call the create function for each row, to return the ID
@@ -162,7 +164,22 @@ public class OpenERPObjectOutput extends BaseStep implements StepInterface {
 
   // Returns the normal storage (Native java) representation of the object (vs binary string etc).
   private Object getInputValue( Object[] inputRow, int index ) throws KettleValueException {
-    return this.getInputRowMeta().getValueMeta( index ).convertToNormalStorageType( inputRow[index] );
+    if (this.getInputRowMeta().getValueMeta(index).isDate() || this.getInputRowMeta().getValueMeta(index).isDateFormatLenient()) {
+      java.util.Date orig = (java.util.Date)this.getInputRowMeta().getValueMeta(index).convertToNormalStorageType(inputRow[index]);
+      java.util.Date ret = new java.util.Date() {
+        @Override
+        public String toString() {
+          //FIXME: Something more optimized
+          SimpleDateFormat sdf = new SimpleDateFormat("yyyy-M-dd");// hh:mm:ss");
+          return sdf.format(this);
+          //return (this.getYear()+1900)+"/"+this.getMonth()+"/"+this.getDay();
+        }
+      };
+      ret.setTime(orig.getTime());
+      return ret;
+    } else {
+      return this.getInputRowMeta().getValueMeta(index).convertToNormalStorageType(inputRow[index]);
+    }
   }
 
   private void CommitBatch() throws Exception {
